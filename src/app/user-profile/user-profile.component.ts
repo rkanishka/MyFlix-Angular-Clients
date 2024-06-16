@@ -4,7 +4,6 @@ import { Router } from '@angular/router';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
-
 // Component Imports
 import { DirectorInfoComponent } from '../director-info/director-info.component';
 import { GenreInfoComponent } from '../genre-info/genre-info.component';
@@ -38,36 +37,39 @@ export class UserProfileComponent implements OnInit {
   movies: any[] = [];
 
   /** List of favorite movies. */
-  favoritemovie: any[] = [];
+  favoriteMovies: any[] = [];
 
   /** List of favorite movie IDs. */
   favoriteMoviesIDs: any[] = [];
 
   /**
-     * Constructs the UserProfileComponent.
-     * @param fetchApiData - The service for fetching API data.
-     * @param dialog - The dialog service for displaying dialogs.
-     * @param snackBar - The snack bar service for displaying notifications.
-     * @param router - The router service for navigation.
-     */
+   * Constructs the UserProfileComponent.
+   * @param fetchApiData - The service for fetching API data.
+   * @param dialog - The dialog service for displaying dialogs.
+   * @param snackBar - The snack bar service for displaying notifications.
+   * @param router - The router service for navigation.
+   */
   constructor(
     public fetchApiData: FetchApiDataService,
     public dialog: MatDialog,
     public snackBar: MatSnackBar,
     public router: Router
   ) { }
-/** Lifecycle hook called after component initialization. */  ngOnInit(): void {
+
+  /** Lifecycle hook called after component initialization. */
+  ngOnInit(): void {
     this.getProfile();
     this.getMovies(); // Call getMovies() on component initialization
     this.getFavMovies(); // Call getFavMovies() on component initialization
   }
 
   /**
-     * Fetches user profile data.
-     */
+   * Fetches user profile data.
+   */
   public getProfile(): void {
-    this.fetchApiData.getUser().subscribe((result: any) => {
-      console.log('result:', result.favoritemovie);
+    const parsedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    this.fetchApiData.getUser(parsedUser.userName).subscribe((result: any) => {
+      console.log('result:', result.favoriteMovies);
       this.user = result;
       this.userData.userName = this.user.userName;
       this.userData.email = this.user.email;
@@ -78,17 +80,17 @@ export class UserProfileComponent implements OnInit {
         }
       }
       this.formUserData = { ...this.userData };
-      this.favoriteMoviesIDs = this.user.favoritemovie;
+      this.favoriteMoviesIDs = this.user.favoriteMovies;
 
       this.fetchApiData.getAllMovies().subscribe((movies: any[]) => {
-        this.favoritemovie = movies.filter((movie: any) => this.favoriteMoviesIDs.includes(movie._id));
+        this.favoriteMovies = movies.filter((movie: any) => this.favoriteMoviesIDs.includes(movie._id));
       });
     });
   }
 
   /**
-     * Fetches all movies.
-     */
+   * Fetches all movies.
+   */
   getMovies(): void {
     this.fetchApiData.getAllMovies().subscribe((result: any) => {
       if (Array.isArray(result)) {
@@ -99,29 +101,28 @@ export class UserProfileComponent implements OnInit {
   }
 
   /**
-     * Fetches user's favorite movies.
-     */
+   * Fetches user's favorite movies.
+   */
   getFavMovies(): void {
-    this.fetchApiData.getUser().subscribe((result) => {
-      this.favoriteMoviesIDs = result.favoritemovie;
+    const parsedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    this.fetchApiData.getUser(parsedUser.userName).subscribe((result) => {
+      this.favoriteMoviesIDs = result.favoriteMovies;
     });
   }
 
   /**
-     * Checks if a movie is in the user's favorite movies list.
-     * @param movie - The movie to check.
-     * @returns True if the movie is a favorite, otherwise false.
-     */
+   * Checks if a movie is in the user's favorite movies list.
+   * @param movie - The movie to check.
+   * @returns True if the movie is a favorite, otherwise false.
+   */
   isFav(movie: any): boolean {
-
     return this.favoriteMoviesIDs.includes(movie._id);
   }
 
-
   /**
-     * Toggles a movie in the user's favorite movies list.
-     * @param movie - The movie to toggle.
-     */
+   * Toggles a movie in the user's favorite movies list.
+   * @param movie - The movie to toggle.
+   */
   toggleFav(movie: any): void {
     const isFavorite = this.isFav(movie);
     isFavorite
@@ -130,13 +131,13 @@ export class UserProfileComponent implements OnInit {
   }
 
   /**
-     * Adds a movie to the user's favorite movies list.
-     * @param movie - The movie to add.
-     */
+   * Adds a movie to the user's favorite movies list.
+   * @param movie - The movie to add.
+   */
   addFavMovies(movie: any): void {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (user) {
-      this.fetchApiData.addFavouriteMovies(user.userName, movie._id).subscribe((result) => {
+    const parsedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    if (parsedUser) {
+      this.fetchApiData.addFavouriteMovies(parsedUser.userName, movie._id).subscribe((result) => {
         localStorage.setItem('user', JSON.stringify(result));
         this.getFavMovies(); // Refresh favorite movies after adding a new one
         this.snackBar.open(`${movie.movieName} has been added to your favorites`, 'OK', {
@@ -147,18 +148,15 @@ export class UserProfileComponent implements OnInit {
   }
 
   /**
-     * Deletes a movie from the user's favorite movies list.
-     * @param movie - The movie to remove from favorites.
-     */
-
+   * Deletes a movie from the user's favorite movies list.
+   * @param movie - The movie to remove from favorites.
+   */
   deleteFavMovies(movie: any): void {
-    let user = localStorage.getItem('user');
-    if (user) {
-      let parsedUser = JSON.parse(user);
-      this.userData.UserId = parsedUser._id;
-      this.fetchApiData.deleteFavoriteMovie(parsedUser.userName, movie._id).subscribe((result) => {
+    const parsedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    if (parsedUser) {
+      this.fetchApiData.deleteFavouriteMovies(parsedUser.userName, movie._id).subscribe((result) => {
         localStorage.setItem('user', JSON.stringify(result));
-        // Remove the movie ID from the favoritemovie array
+        // Remove the movie ID from the favoriteMovies array
         this.favoriteMoviesIDs = this.favoriteMoviesIDs.filter((id) => id !== movie._id);
         // Fetch the user's favorite movies again to update the movie list
         this.getFavMovies();
@@ -171,31 +169,36 @@ export class UserProfileComponent implements OnInit {
   }
 
   /**
-     * Updates user data.
-     */
+   * Updates user data.
+   */
   updateUser(): void {
-    this.fetchApiData.updateUser(this.formUserData).subscribe((result) => {
-      console.log('User update success:', result);
-      localStorage.setItem('user', JSON.stringify(result));
-      this.snackBar.open('User updated successfully!', 'OK', {
-        duration: 2000,
-      });
-      this.getProfile();
-    }, (error) => {
-      console.log('Error updating user:', error);
-      this.snackBar.open('Failed to update user', 'OK', {
-        duration: 2000,
-      });
-    });
+    const parsedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    this.fetchApiData.updateUser(parsedUser.userName, this.formUserData).subscribe(
+      (result) => {
+        console.log('User update success:', result);
+        localStorage.setItem('user', JSON.stringify(result));
+        this.snackBar.open('User updated successfully!', 'OK', {
+          duration: 2000,
+        });
+        this.getProfile();
+      },
+      (error) => {
+        console.log('Error updating user:', error);
+        this.snackBar.open('Failed to update user', 'OK', {
+          duration: 2000,
+        });
+      }
+    );
   }
 
   /**
-     * Deletes the user's account.
-     */
+   * Deletes the user's account.
+   */
   async deleteUser(): Promise<void> {
-    console.log('deleteUser function called:', this.userData.email)
+    console.log('deleteUser function called:', this.userData.email);
     if (confirm('Do you want to delete your account permanently?')) {
-      this.fetchApiData.deleteUser().subscribe(() => {
+      const parsedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      this.fetchApiData.deleteUser(parsedUser.userName).subscribe(() => {
         this.snackBar.open('Account deleted successfully!', 'OK', {
           duration: 3000,
         });
@@ -204,11 +207,12 @@ export class UserProfileComponent implements OnInit {
       });
     }
   }
+
   /**
-     * Opens a dialog to view genre information.
-     * @param genre - The genre.
-     * @param description - The description of the genre.
-     */
+   * Opens a dialog to view genre information.
+   * @param genre - The genre.
+   * @param description - The description of the genre.
+   */
   openGenreDialog(genre: string, description: string): void {
     this.dialog.open(GenreInfoComponent, {
       data: {
@@ -220,11 +224,11 @@ export class UserProfileComponent implements OnInit {
   }
 
   /**
-    * Opens a dialog to view director information.
-    * @param director - The director's name.
-    * @param bio - The director's biography.
-    * @param birthdate - The director's birthdate.
-    */
+   * Opens a dialog to view director information.
+   * @param director - The director's name.
+   * @param bio - The director's biography.
+   * @param birthdate - The director's birthdate.
+   */
   openDirectorDialog(director: string, bio: string, birthdate: string): void {
     this.dialog.open(DirectorInfoComponent, {
       data: {
@@ -250,5 +254,4 @@ export class UserProfileComponent implements OnInit {
       width: '500px',
     });
   }
-
 }
